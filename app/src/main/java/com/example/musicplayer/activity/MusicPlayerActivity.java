@@ -1,9 +1,10 @@
-package com.example.musicplayer;
+package com.example.musicplayer.activity;
 
 import androidx.fragment.app.Fragment;
 
 import android.os.Bundle;
 
+import com.example.musicplayer.R;
 import com.example.musicplayer.fragments.MusicPlayerFragment;
 
 public class MusicPlayerActivity extends SingleFragmentActivity {

@@ -10,7 +10,9 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
+import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.util.Log;
@@ -43,12 +45,14 @@ public class MusicPlayerFragment extends Fragment {
     public static final String BUNDLE_KEY_SEEK_BAR = "Bundle_Key_SeekBar";
     public static final String BUNDLE_KEY_PLAYING_SOUND = "Bundle_key_Playing_Sound";
     public static final String BUNDLE_KEY_SEEK_BAR_SOUND = "Bundle_Key_SeekBarSound";
+    public static final int REQUEST_CODE_BEAT_BOX_DETAIL = 0;
+
 
     private RecyclerView mRecyclerView;
     private MusicPlayerRepository mRepository;
     private List<Sound> mSounds;
     private SeekBar mSeekBar;
-    private ImageButton mImageButton_Pause, mImageButton_Play;
+    private ImageButton mImageButton_Playing, mImageButton_next,mImageButton_prev;
     private TextView mTextViewTime;
     private ImageView mImageViewSeekBar;
     private MutableLiveData<String> mLiveDataTime;
@@ -61,6 +65,8 @@ public class MusicPlayerFragment extends Fragment {
     private MutableLiveData<Sound> mLiveDataPlayingSound;
     private LinearLayout mLinearLayoutSeekBar;
     private static Boolean mFlagSeekBar;
+    private boolean mIsMusicPlaying;
+
 
 
     public MusicPlayerFragment() {
@@ -91,6 +97,8 @@ public class MusicPlayerFragment extends Fragment {
         mLiveDataTime = new MutableLiveData<>();
         mLiveDataSeekBar = new MutableLiveData<>();
         mLiveDataPlayingSound = mRepository.getLiveDataPlayingSound();
+        mIsMusicPlaying = mRepository.isMusicPlaying();
+
         if (mFlagSeekBar == null)
             mFlagSeekBar = false;
     }
@@ -146,8 +154,9 @@ public class MusicPlayerFragment extends Fragment {
     private void findViews(View view) {
         mRecyclerView = view.findViewById(R.id.recycler_view_beat_box);
         //mSeekBar = view.findViewById(R.id.seekBar);
-        mImageButton_Play = view.findViewById(R.id.imageBtn_play);
-        mImageButton_Pause = view.findViewById(R.id.imageBtn_pause);
+        mImageButton_prev = view.findViewById(R.id.imageBtn_prev_seekbar);
+        mImageButton_next = view.findViewById(R.id.imageBtn_next_seekbar);
+        mImageButton_Playing = view.findViewById(R.id.imageBtn_pause_seekbar);
         //mTextViewTime = view.findViewById(R.id.txtView_Time);
         mImageViewSeekBar = view.findViewById(R.id.imageSeekBar);
     }
@@ -159,22 +168,41 @@ public class MusicPlayerFragment extends Fragment {
 
         int rowNumber = getResources().getInteger(R.integer.row_number);
         mRecyclerView.setLayoutManager(new GridLayoutManager(getContext(), rowNumber));
-        /*if (!mRepository.getMediaPlayer().isPlaying())
-            mSeekBar.setEnabled(false);*/
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        mRecyclerView.addItemDecoration(new DividerItemDecoration(mRecyclerView.getContext(), DividerItemDecoration.VERTICAL));
+
+        if (mIsMusicPlaying)
+            mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause));
+        else
+            mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_arrow));
+
     }
 
     private void listeners() {
 
-        mImageButton_Play.setOnClickListener(new View.OnClickListener() {
+        mImageButton_next.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mRepository.playAgain();
+                mRepository.nextSound(mRepository.getSound(mPlayingSoundId));
             }
         });
-        mImageButton_Pause.setOnClickListener(new View.OnClickListener() {
+        mImageButton_Playing.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mRepository.pause();
+                if (mRepository.getMediaPlayer().isPlaying()) {
+                    mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_arrow));
+                    mRepository.pause();
+                } else {
+                    mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause));
+                    mRepository.playAgain();
+                }
+            }
+        });
+
+        mImageButton_prev.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mRepository.previousSound(mRepository.getSound(mPlayingSoundId));
             }
         });
 
@@ -182,7 +210,7 @@ public class MusicPlayerFragment extends Fragment {
             @Override
             public void onClick(View view) {
                 Intent intentBeatBoxDetail = MusicPlayerDetailActivity.newIntent(getActivity(),mPlayingSoundId,mState);
-                startActivity(intentBeatBoxDetail);
+                startActivityForResult(intentBeatBoxDetail, REQUEST_CODE_BEAT_BOX_DETAIL);
             }
         });
     }
@@ -290,7 +318,8 @@ public class MusicPlayerFragment extends Fragment {
                     mFlagSeekBar = true;
                     mLiveDataSeekBar.postValue(mFlagSeekBar);
                     mLinearLayoutSeekBar.setVisibility(View.VISIBLE);
-                    mRepository.loadMusic(mSound.getName());
+                    mRepository.loadMusic(mSound.getSoundId());
+                    mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause));
                     mPlayingSoundId = mSound.getSoundId();
                     if (mState.equalsIgnoreCase("Tracks")) {
                         mSeekBarSoundName.setText(mSound.getTitle());

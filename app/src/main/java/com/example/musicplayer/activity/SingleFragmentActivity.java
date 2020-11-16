@@ -1,10 +1,12 @@
-package com.example.musicplayer;
+package com.example.musicplayer.activity;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import android.os.Bundle;
+
+import com.example.musicplayer.R;
 
 public abstract class SingleFragmentActivity extends AppCompatActivity {
 

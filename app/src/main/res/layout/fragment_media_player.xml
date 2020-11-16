@@ -10,8 +10,6 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view_beat_box"
         android:layout_width="match_parent"
-        android:layout_above="@id/layout_seekBar"
-        android:layout_alignParentTop="true"
         android:layout_height="wrap_content">
 
     </androidx.recyclerview.widget.RecyclerView>
@@ -23,6 +21,32 @@
         android:layout_alignParentBottom="true"
         style="@style/SeekBarLayout"
         android:orientation="vertical">
+
+        <!--<LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <SeekBar
+                android:id="@+id/seekBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="4"
+                android:progressTint="@color/black"
+                android:theme="@style/Widget.AppCompat.SeekBar"
+                android:thumbTint="@color/white" />
+
+            <TextView
+                android:id="@+id/txtView_Time"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/black" />
+
+
+        </LinearLayout>-->
 
         <RelativeLayout
             android:id="@+id/layout_buttons"
@@ -53,13 +77,13 @@
 
             <TextView
                 android:id="@+id/text_seekBar_Sound_name"
-                android:layout_width="100dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignTop="@id/cardViewSeekBar"
                 android:layout_alignBottom="@id/cardViewSeekBar"
-                android:layout_toRightOf="@id/cardViewSeekBar"
                 android:gravity="center"
-                style="@style/TextAppearance.AppCompat.Body1" />
+                style="@style/TextAppearance.AppCompat.Body1"
+                android:layout_toRightOf="@id/cardViewSeekBar" />
 
             <ImageButton
                 android:id="@+id/imageBtn_next_seekbar"
@@ -82,7 +106,7 @@
                 style="@style/Widget.AppCompat.ActionButton.CloseMode"
                 android:src="@drawable/ic_pause" />
             <ImageButton
-                android:id="@+id/imageBtn_prev"
+                android:id="@+id/imageBtn_prev_seekbar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toLeftOf="@id/imageBtn_pause_seekbar"
@@ -90,7 +114,7 @@
                 android:layout_alignBottom="@id/cardViewSeekBar"
                 android:layout_gravity="center"
                 style="@style/Widget.AppCompat.ActionButton.CloseMode"
-                android:src="@drawable/ic_skip_previous" />-->
+                android:src="@drawable/ic_skip_previous" />
 
 
 

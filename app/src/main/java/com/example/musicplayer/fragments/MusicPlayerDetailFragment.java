@@ -10,6 +10,7 @@ import androidx.lifecycle.Observer;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -37,6 +38,8 @@ public class MusicPlayerDetailFragment extends Fragment {
     private MutableLiveData<String> mLiveDataTime;
     private SeekBar mSeekBar;
     private TextView mTextViewTime,mTextViewTotalTime;
+    private ImageButton mImageButton_next,mImageButton_prev,mImageButton_playing;
+    private boolean mIsMusicPlaying;
 
     public MusicPlayerDetailFragment() {
         // Required empty public constructor
@@ -66,6 +69,7 @@ public class MusicPlayerDetailFragment extends Fragment {
         mSoundId = (UUID) getArguments().getSerializable(ARGS_SOUND);
         mState = getArguments().getString(ARGS_STATE);
         mRepository = MusicPlayerRepository.getInstance(getActivity());
+        mIsMusicPlaying = mRepository.isMusicPlaying();
         mSound = mRepository.getSound(mSoundId);
         mLiveDataTime = new MutableLiveData<>();
     }
@@ -76,13 +80,50 @@ public class MusicPlayerDetailFragment extends Fragment {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_music_player_detail, container, false);
         findViews(view);
+        listeners();
         initView();
         seekBar();
         setLiveDataObservers();
         return view;
     }
 
+    private void listeners() {
+
+        mImageButton_next.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mRepository.nextSound(mSound);
+                mSound = mRepository.getPlayingSound();
+                mSoundId = mSound.getSoundId();
+                initView();
+            }
+        });
+        mImageButton_playing.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (mRepository.getMediaPlayer().isPlaying()) {
+                    mImageButton_playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_circle_outline));
+                    mRepository.pause();
+                } else {
+                    mImageButton_playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause_circle_outline));
+                    mRepository.playAgain();
+                }
+            }
+        });
+        mImageButton_prev.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mRepository.previousSound(mRepository.getSound(mSoundId));
+                mSound = mRepository.getPlayingSound();
+                mSoundId = mSound.getSoundId();
+                initView();
+            }
+        });
+    }
+
     private void initView() {
+        mIsMusicPlaying = mRepository.isMusicPlaying();
+
         if (mSound.getBitmap()!=null)
             mImageView.setImageBitmap(mSound.getBitmap());
         else
@@ -94,6 +135,12 @@ public class MusicPlayerDetailFragment extends Fragment {
         else
             mTextView.setText(mSound.getAlbum());
 
+        if (mIsMusicPlaying)
+            mImageButton_playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause_circle_outline));
+        else
+            mImageButton_playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_circle_outline));
+
+
     }
 
     private void findViews(View view) {
@@ -102,6 +149,9 @@ public class MusicPlayerDetailFragment extends Fragment {
         mSeekBar = view.findViewById(R.id.seekBar_detail);
         mTextViewTime = view.findViewById(R.id.txtView_Time_detail);
         mTextViewTotalTime = view.findViewById(R.id.txtView_Time_detail_Total);
+        mImageButton_next = view.findViewById(R.id.imageBtn_next);
+        mImageButton_prev = view.findViewById(R.id.imageBtn_previous);
+        mImageButton_playing = view.findViewById(R.id.imageBtn_play);
     }
 
     private void setLiveDataObservers() {
