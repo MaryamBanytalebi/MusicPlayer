@@ -1,12 +1,18 @@
 package com.example.musicplayer.fragments;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
@@ -15,6 +21,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -24,22 +31,19 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.musicplayer.R;
-import com.example.musicplayer.activity.MusicPlayerDetailActivity;
 import com.example.musicplayer.model.Sound;
 import com.example.musicplayer.repository.MusicPlayerRepository;
 
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 
 public class MusicPlayerFragment extends Fragment {
 
-
+    public static final int MY_PERMISSION_REQUEST = 1;
     public static final String TAG = "BeatBoxFragment";
     public static final String BUNDLE_KEY_STATE = "Bundle_Key_State";
     public static final String BUNDLE_KEY_SEEK_BAR = "Bundle_Key_SeekBar";
@@ -81,6 +85,7 @@ public class MusicPlayerFragment extends Fragment {
         return fragment;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -118,6 +123,7 @@ public class MusicPlayerFragment extends Fragment {
         outState.putSerializable(BUNDLE_KEY_PLAYING_SOUND,mPlayingSoundId);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -136,11 +142,55 @@ public class MusicPlayerFragment extends Fragment {
         }
         initViews();
         listeners();
+        checkPermission();
         //seekBar();
         //setLiveDataObservers();
         setupAdapter();
 
         return view;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void checkPermission() {
+        if (ContextCompat.checkSelfPermission(getActivity(),
+                Manifest.permission.READ_EXTERNAL_STORAGE) != getActivity().getPackageManager().PERMISSION_GRANTED){
+            if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(),
+                    Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                ActivityCompat.requestPermissions(getActivity(),
+                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, MY_PERMISSION_REQUEST);
+            } else {
+                ActivityCompat.requestPermissions(getActivity(),
+                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},MY_PERMISSION_REQUEST);
+            }
+        } else {
+            doStuff();
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode){
+            case MY_PERMISSION_REQUEST:{
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    if (ContextCompat.checkSelfPermission(getActivity(),
+                            Manifest.permission.READ_EXTERNAL_STORAGE)==PackageManager.PERMISSION_GRANTED){
+                        Toast.makeText(getActivity(),"Permission granted!",Toast.LENGTH_SHORT).show();
+
+                        doStuff();
+                    }
+                }else {
+                    Toast.makeText(getActivity(),"No Permission granted!",Toast.LENGTH_SHORT).show();
+                    getActivity().finish();
+                }
+                return;
+            }
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void doStuff() {
+        mRepository.getSongFromExternal();
     }
 
     @Override
@@ -159,6 +209,10 @@ public class MusicPlayerFragment extends Fragment {
         mImageButton_Playing = view.findViewById(R.id.imageBtn_pause_seekbar);
         //mTextViewTime = view.findViewById(R.id.txtView_Time);
         mImageViewSeekBar = view.findViewById(R.id.imageSeekBar);
+        mLinearLayoutSeekBar = view.findViewById(R.id.layout_seekBar);
+        mSeekBarSoundName = view.findViewById(R.id.text_seekBar_Sound_name);
+
+
     }
 
     private void initViews() {
@@ -166,10 +220,17 @@ public class MusicPlayerFragment extends Fragment {
         if (!mFlagSeekBar)
             mLinearLayoutSeekBar.setVisibility(View.GONE);
 
-        int rowNumber = getResources().getInteger(R.integer.row_number);
-        mRecyclerView.setLayoutManager(new GridLayoutManager(getContext(), rowNumber));
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        mRecyclerView.addItemDecoration(new DividerItemDecoration(mRecyclerView.getContext(), DividerItemDecoration.VERTICAL));
+        mSeekBarSoundName.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+        mSeekBarSoundName.setSingleLine(true);
+        mSeekBarSoundName.setSelected(true);
+        mSeekBarSoundName.setMarqueeRepeatLimit(-1);
+        if (mState.equalsIgnoreCase("Albums")) {
+            int rowNumber = getResources().getInteger(R.integer.row_number);
+            mRecyclerView.setLayoutManager(new GridLayoutManager(getContext(), rowNumber));
+        } else {
+            mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+            mRecyclerView.addItemDecoration(new DividerItemDecoration(mRecyclerView.getContext(), DividerItemDecoration.VERTICAL));
+        }
 
         if (mIsMusicPlaying)
             mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause));
@@ -181,6 +242,7 @@ public class MusicPlayerFragment extends Fragment {
     private void listeners() {
 
         mImageButton_next.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View view) {
                 mRepository.nextSound(mRepository.getSound(mPlayingSoundId));
@@ -200,6 +262,7 @@ public class MusicPlayerFragment extends Fragment {
         });
 
         mImageButton_prev.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View view) {
                 mRepository.previousSound(mRepository.getSound(mPlayingSoundId));
@@ -313,6 +376,7 @@ public class MusicPlayerFragment extends Fragment {
             mButton = itemView.findViewById(R.id.button_beat_box);
             mTextMusicName = itemView.findViewById(R.id.txt_music_name);
             mButton.setOnClickListener(new View.OnClickListener() {
+                @RequiresApi(api = Build.VERSION_CODES.KITKAT)
                 @Override
                 public void onClick(View v) {
                     mFlagSeekBar = true;
