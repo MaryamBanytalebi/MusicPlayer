@@ -44,10 +44,11 @@ public class MusicPlayerDetailFragment extends Fragment {
     private MutableLiveData<Boolean> mLiveDataRepeatAll;
     private SeekBar mSeekBar;
     private TextView mTextViewTime,mTextViewTotalTime;
-    private ImageButton mImageButton_next,mImageButton_prev,mImageButton_playing,
-            mImageButtonRepeatOne,mImageButtonRepeatAll;
+    private ImageButton mImageButton_next,mImageButton_prev,mImageButton_playing,mImageButtonRepeat;
     private boolean mIsMusicPlaying;
     private boolean mIsRepeatAll;
+    private static boolean  mWhichButton;
+    private String mStringRepeatState;
 
     public MusicPlayerDetailFragment() {
         // Required empty public constructor
@@ -82,6 +83,7 @@ public class MusicPlayerDetailFragment extends Fragment {
         mSounds = mRepository.getSounds();
         mLiveDataTime = new MutableLiveData<>();
         mIsMusicPlaying = mRepository.isMusicPlaying();
+        mWhichButton = mRepository.isRepeat();
         mLiveDataRepeatAll = mRepository.getLiveDataIsPlaying();
 
     }
@@ -134,19 +136,22 @@ public class MusicPlayerDetailFragment extends Fragment {
             }
         });
 
-        mImageButtonRepeatOne.setOnClickListener(new View.OnClickListener() {
+        mImageButtonRepeat.setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View view) {
-                mRepository.repeatOne(mRepository.getSound(mSoundId));
-                initView();
-            }
-        });
-        mImageButtonRepeatAll.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                mIsRepeatAll = mRepository.isRepeatAll();
-                mRepository.setRepeatAll(!mIsRepeatAll);
+                mRepository.setRepeat(!mWhichButton);
+                mWhichButton = mRepository.isRepeat();
+                if (mWhichButton) {
+                    mIsRepeatAll = mRepository.isRepeatAll();
+                    mRepository.setRepeatAll(!mIsRepeatAll);
+                }
+                else if (!mWhichButton){
+                    mRepository.repeatOne(mRepository.getSound(mSoundId));
+                    mIsRepeatAll = mRepository.isRepeatAll();
+                    mRepository.setRepeatAll(!mIsRepeatAll);
+                    initView();
+                }
             }
         });
     }
@@ -167,6 +172,11 @@ public class MusicPlayerDetailFragment extends Fragment {
             mImageButton_playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause_circle_outline));
         else
             mImageButton_playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_circle_outline));
+        if (mWhichButton)
+            mImageButtonRepeat.setImageDrawable(getResources().getDrawable(R.drawable.ic_repeat));
+        else
+            mImageButtonRepeat.setImageDrawable(getResources().getDrawable(R.drawable.ic_repeat_one));
+
 
 
     }
@@ -180,6 +190,8 @@ public class MusicPlayerDetailFragment extends Fragment {
         mImageButton_next = view.findViewById(R.id.imageBtn_next);
         mImageButton_prev = view.findViewById(R.id.imageBtn_previous);
         mImageButton_playing = view.findViewById(R.id.imageBtn_play);
+        mImageButtonRepeat = view.findViewById(R.id.imageBtn_repeat);
+
     }
 
     @SuppressLint("FragmentLiveDataObserve")
@@ -190,6 +202,15 @@ public class MusicPlayerDetailFragment extends Fragment {
                 mTextViewTime.setText(time);
                 if (time.equals(mTextViewTotalTime.getText().toString()))
                     mLiveDataRepeatAll.postValue(false);
+
+                if (mWhichButton) {
+                    mImageButtonRepeat.setImageDrawable(getResources().getDrawable(R.drawable.ic_repeat));
+                    mStringRepeatState = "All";
+                }
+                else {
+                    mImageButtonRepeat.setImageDrawable(getResources().getDrawable(R.drawable.ic_repeat_one));
+                    mStringRepeatState = "One";
+                }
             }
         });
         mLiveDataRepeatAll.observe(this, new Observer<Boolean>() {
