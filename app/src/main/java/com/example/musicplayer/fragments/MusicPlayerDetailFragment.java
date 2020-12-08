@@ -22,6 +22,7 @@ import com.example.musicplayer.R;
 import com.example.musicplayer.model.Sound;
 import com.example.musicplayer.repository.MusicPlayerRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -35,19 +36,24 @@ public class MusicPlayerDetailFragment extends Fragment {
     public static final String BUNDLE_STATE = "bundle_state";
     private UUID mSoundId;
     private Sound mSound;
-    private List<Sound> mSounds;
+    //private List<Sound> mSounds;
     private MusicPlayerRepository mRepository;
     private ImageView mImageView;
     private TextView mTextView;
     private String mState;
+    private String mTotalTime;
+    private List<Integer> mIndexList;
+    private List<Sound> mSounds;
     private MutableLiveData<String> mLiveDataTime;
     private MutableLiveData<Boolean> mLiveDataRepeatAll;
     private SeekBar mSeekBar;
     private TextView mTextViewTime,mTextViewTotalTime;
-    private ImageButton mImageButton_next,mImageButton_prev,mImageButton_playing,mImageButtonRepeat;
+    private ImageButton mImageButton_next,mImageButton_prev,mImageButton_playing,mImageButtonRepeat,
+    mImageButtonShuffle;
     private boolean mIsMusicPlaying;
     private boolean mIsRepeatAll;
-    private static boolean  mWhichButton;
+    private static boolean  mWhichRepeatButton;
+    private static boolean  mWhichShuffleButton;
     private String mStringRepeatState;
 
     public MusicPlayerDetailFragment() {
@@ -80,11 +86,14 @@ public class MusicPlayerDetailFragment extends Fragment {
         mState = getArguments().getString(ARGS_STATE);
         mRepository = MusicPlayerRepository.getInstance(getActivity());
         mSound = mRepository.getSound(mSoundId);
-        mSounds = mRepository.getSounds();
+        //mSounds = mRepository.getSounds();
         mLiveDataTime = new MutableLiveData<>();
         mIsMusicPlaying = mRepository.isMusicPlaying();
-        mWhichButton = mRepository.isRepeat();
+        mWhichRepeatButton = mRepository.isRepeat();
+        mWhichShuffleButton = mRepository.isShuffle();
         mLiveDataRepeatAll = mRepository.getLiveDataIsPlaying();
+        mIndexList = new ArrayList<>();
+        mSounds = mRepository.getSounds();
 
     }
 
@@ -140,16 +149,30 @@ public class MusicPlayerDetailFragment extends Fragment {
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View view) {
-                mRepository.setRepeat(!mWhichButton);
-                mWhichButton = mRepository.isRepeat();
-                if (mWhichButton) {
+                mRepository.setRepeat(!mWhichRepeatButton);
+                mWhichRepeatButton = mRepository.isRepeat();
+                if (mWhichRepeatButton) {
                     mIsRepeatAll = mRepository.isRepeatAll();
                     mRepository.setRepeatAll(!mIsRepeatAll);
                 }
-                else if (!mWhichButton){
+                else if (!mWhichRepeatButton){
                     mRepository.repeatOne(mRepository.getSound(mSoundId));
                     mIsRepeatAll = mRepository.isRepeatAll();
                     mRepository.setRepeatAll(!mIsRepeatAll);
+                    initView();
+                }
+            }
+        });
+
+        mImageButtonShuffle.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mRepository.setShuffle(!mWhichShuffleButton);
+                mWhichShuffleButton = mRepository.isShuffle();
+                if (mWhichShuffleButton) {
+                    mIndexList = mRepository.shuffle();
+                } else if (!mWhichShuffleButton) {
+                    mIndexList.clear();
                     initView();
                 }
             }
@@ -158,6 +181,8 @@ public class MusicPlayerDetailFragment extends Fragment {
 
     private void initView() {
         mIsMusicPlaying = mRepository.isMusicPlaying();
+        mTextViewTotalTime.setText(mTotalTime);
+
         if (mSound.getBitmap()!=null)
             mImageView.setImageBitmap(mSound.getBitmap());
         else
@@ -168,18 +193,24 @@ public class MusicPlayerDetailFragment extends Fragment {
             mTextView.setText(mSound.getArtist());
         else
             mTextView.setText(mSound.getAlbum());
-        if (mIsMusicPlaying)
-            mImageButton_playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause_circle_outline));
-        else
-            mImageButton_playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_circle_outline));
-        if (mWhichButton)
-            mImageButtonRepeat.setImageDrawable(getResources().getDrawable(R.drawable.ic_repeat));
-        else
-            mImageButtonRepeat.setImageDrawable(getResources().getDrawable(R.drawable.ic_repeat_one));
+        setButtonIcon(mIsMusicPlaying, mImageButton_playing, R.drawable.ic_pause_circle_outline,
+                R.drawable.ic_play_circle_outline);
 
+        setButtonIcon(mWhichRepeatButton, mImageButtonRepeat, R.drawable.ic_repeat,
+                R.drawable.ic_repeat_one);
 
+        setButtonIcon(mWhichShuffleButton, mImageButtonShuffle, R.drawable.ic_shuffle,
+                R.drawable.ic_arrow);
 
     }
+
+    private void setButtonIcon(boolean isMusicPlaying, ImageButton imageButton_playing, int p, int p2) {
+        if (isMusicPlaying)
+            imageButton_playing.setImageDrawable(getResources().getDrawable(p));
+        else
+            imageButton_playing.setImageDrawable(getResources().getDrawable(p2));
+    }
+
 
     private void findViews(View view) {
         mImageView = view.findViewById(R.id.image_beat_box_detail);
@@ -191,6 +222,8 @@ public class MusicPlayerDetailFragment extends Fragment {
         mImageButton_prev = view.findViewById(R.id.imageBtn_previous);
         mImageButton_playing = view.findViewById(R.id.imageBtn_play);
         mImageButtonRepeat = view.findViewById(R.id.imageBtn_repeat);
+        mImageButtonShuffle = view.findViewById(R.id.imageBtn_shuffle);
+
 
     }
 
@@ -199,17 +232,16 @@ public class MusicPlayerDetailFragment extends Fragment {
         mLiveDataTime.observe(this, new Observer<String>() {
             @Override
             public void onChanged(String time) {
+                initView();
+                setTotalTime();
                 mTextViewTime.setText(time);
                 if (time.equals(mTextViewTotalTime.getText().toString()))
                     mLiveDataRepeatAll.postValue(false);
 
-                if (mWhichButton) {
-                    mImageButtonRepeat.setImageDrawable(getResources().getDrawable(R.drawable.ic_repeat));
-                    mStringRepeatState = "All";
-                }
-                else {
-                    mImageButtonRepeat.setImageDrawable(getResources().getDrawable(R.drawable.ic_repeat_one));
-                    mStringRepeatState = "One";
+                setButtonIcon(mWhichRepeatButton, mImageButtonRepeat, R.drawable.ic_repeat, R.drawable.ic_repeat_one);
+                if (mIndexList.size() != 0) {
+                    if (time.equals(mTextViewTotalTime.getText().toString()))
+                        mLiveDataRepeatAll.postValue(false);
                 }
             }
         });
@@ -217,11 +249,13 @@ public class MusicPlayerDetailFragment extends Fragment {
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onChanged(Boolean isPlaying) {
-                if (!isPlaying && mRepository.isRepeatAll()){
-                    mRepository.nextSound(mSound);
+                if (!isPlaying && mIndexList.size() != 0 && mWhichShuffleButton) {
+                    int i = mRepository.getIndex();
+                    mRepository.loadMusic(mSounds.get(mIndexList.get(i)).getSoundId());
                     mSound = mRepository.getPlayingSound();
                     mSoundId = mSound.getSoundId();
                     initView();
+                    mRepository.setIndex(++i);
                 }
             }
         });
@@ -230,6 +264,7 @@ public class MusicPlayerDetailFragment extends Fragment {
     private void seekBar() {
         mSeekBar.setMax(mRepository.getMediaPlayer().getDuration());
         mSeekBar.setProgress(mRepository.getMediaPlayer().getCurrentPosition());
+        setTotalTime();
         long minutes = TimeUnit.MILLISECONDS.toMinutes(mRepository.getMediaPlayer().getDuration());
         long seconds = TimeUnit.MILLISECONDS.toSeconds(mRepository.getMediaPlayer().getDuration()) - (minutes * 60);
 
@@ -269,5 +304,14 @@ public class MusicPlayerDetailFragment extends Fragment {
 
             }
         });
+    }
+
+    private void setTotalTime() {
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(mRepository.getMediaPlayer().getDuration());
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(mRepository.getMediaPlayer().getDuration()) - (minutes * 60);
+
+        final String maxTime = minutes + ":" + seconds;
+        mTotalTime = maxTime;
+        mTextViewTotalTime.setText(mTotalTime);
     }
 }

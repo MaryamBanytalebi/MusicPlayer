@@ -228,7 +228,7 @@ public class MusicPlayerFragment extends Fragment {
         if (mState.equalsIgnoreCase("Albums")) {
             int rowNumber = getResources().getInteger(R.integer.row_number);
             mRecyclerView.setLayoutManager(new GridLayoutManager(getContext(), rowNumber));
-        } else {
+        }else {
             mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
             mRecyclerView.addItemDecoration(new DividerItemDecoration(mRecyclerView.getContext(), DividerItemDecoration.VERTICAL));
         }
@@ -237,6 +237,7 @@ public class MusicPlayerFragment extends Fragment {
             mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause));
         else
             mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_arrow));
+
 
     }
 
@@ -400,7 +401,7 @@ public class MusicPlayerFragment extends Fragment {
                     } else {
                         mImageViewSeekBar.setImageDrawable(getResources().getDrawable(R.drawable.ic_music));
                     }
-                    MediaPlayer mediaPlayer = mRepository.getMediaPlayer();
+                    //MediaPlayer mediaPlayer = mRepository.getMediaPlayer();
                    /* mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                         @Override
                         public void onCompletion(MediaPlayer mediaPlayer) {
