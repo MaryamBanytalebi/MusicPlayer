@@ -1,7 +1,12 @@
 package com.example.musicplayer.fragments;
 
 import android.Manifest;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
@@ -37,12 +42,15 @@ import com.example.musicplayer.R;
 import com.example.musicplayer.activity.MusicPlayerDetailActivity;
 import com.example.musicplayer.model.Sound;
 import com.example.musicplayer.repository.MusicPlayerRepository;
+import com.example.musicplayer.service.CreatNotification;
+import com.example.musicplayer.service.OnClearFromRecentService;
+import com.example.musicplayer.service.Playable;
 
 import java.util.List;
 import java.util.UUID;
 
 
-public class MusicPlayerFragment extends Fragment {
+public class MusicPlayerFragment extends Fragment implements Playable {
 
     public static final int MY_PERMISSION_REQUEST = 1;
     public static final String TAG = "BeatBoxFragment";
@@ -71,7 +79,9 @@ public class MusicPlayerFragment extends Fragment {
     private LinearLayout mLinearLayoutSeekBar;
     private static Boolean mFlagSeekBar;
     private boolean mIsMusicPlaying;
-
+    private NotificationManager mNotificationManager;
+    private boolean isPlaying = false;
+    int position = 0;
 
 
     public MusicPlayerFragment() {
@@ -107,6 +117,23 @@ public class MusicPlayerFragment extends Fragment {
 
         if (mFlagSeekBar == null)
             mFlagSeekBar = false;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            createChannel();
+            getActivity().registerReceiver(mBroadcastReceiver, new IntentFilter("SOUNDS_SOUNDS"));
+            getActivity().startService(new Intent(getActivity().getBaseContext(), OnClearFromRecentService.class));
+        }
+    }
+
+    private void createChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(CreatNotification.CHANNEL_ID,
+                    "BeatBox", NotificationManager.IMPORTANCE_LOW);
+            mNotificationManager = getActivity().getSystemService(NotificationManager.class);
+            if (mNotificationManager != null) {
+                mNotificationManager.createNotificationChannel(channel);
+            }
+        }
     }
 
     @Override
@@ -115,6 +142,11 @@ public class MusicPlayerFragment extends Fragment {
         Log.d(TAG, "onDestroy");
 
         mRepository.release();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            mNotificationManager.cancelAll();
+        }
+        getActivity().unregisterReceiver(mBroadcastReceiver);
     }
 
     @Override
@@ -247,19 +279,13 @@ public class MusicPlayerFragment extends Fragment {
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View view) {
-                mRepository.nextSound(mRepository.getSound(mPlayingSoundId));
+                nextMethod();
             }
         });
         mImageButton_Playing.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (mRepository.getMediaPlayer().isPlaying()) {
-                    mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_arrow));
-                    mRepository.pause();
-                } else {
-                    mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause));
-                    mRepository.playAgain();
-                }
+                playMethod();
             }
         });
 
@@ -267,7 +293,7 @@ public class MusicPlayerFragment extends Fragment {
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             public void onClick(View view) {
-                mRepository.previousSound(mRepository.getSound(mPlayingSoundId));
+                prevMethod();
             }
         });
 
@@ -278,6 +304,26 @@ public class MusicPlayerFragment extends Fragment {
                 startActivityForResult(intentBeatBoxDetail, REQUEST_CODE_BEAT_BOX_DETAIL);
             }
         });
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void nextMethod() {
+        mRepository.nextSound(mRepository.getSound(mPlayingSoundId));
+    }
+
+    private void playMethod() {
+        if (mRepository.getMediaPlayer().isPlaying()) {
+            mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_play_arrow));
+            mRepository.pause();
+        } else {
+            mImageButton_Playing.setImageDrawable(getResources().getDrawable(R.drawable.ic_pause));
+            mRepository.playAgain();
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    private void prevMethod() {
+        mRepository.previousSound(mRepository.getSound(mPlayingSoundId));
     }
 
     /*private void setLiveDataObservers() {
@@ -364,6 +410,66 @@ public class MusicPlayerFragment extends Fragment {
         List<Sound> sounds = mRepository.getSounds();
         SoundAdapter adapter = new SoundAdapter(sounds);
         mRecyclerView.setAdapter(adapter);
+    }
+
+    BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getExtras().getString("actionname");
+
+            switch (action) {
+                case CreatNotification.ACTION_PREVIOUS:
+                    onSoundPrevious();
+                    prevMethod();
+                    break;
+                case CreatNotification.ACTION_PLAY:
+                    if (isPlaying) {
+                        onSoundPause();
+                        playMethod();
+                    } else {
+                        onSoundPlay();
+                        playMethod();
+                    }
+                    break;
+                case CreatNotification.ACTION_NEXT:
+                    onSoundNext();
+                    nextMethod();
+                    break;
+            }
+        }
+    };
+
+    @Override
+    public void onSoundPrevious() {
+        position = mRepository.getSoundIndex(mPlayingSoundId) - 1;
+        CreatNotification.createNotification(getActivity(), mSounds.get(position),
+                R.drawable.ic_pause, position, mSounds.size() - 1);
+
+    }
+
+    @Override
+    public void onSoundPlay() {
+        position = mRepository.getSoundIndex(mPlayingSoundId);
+        CreatNotification.createNotification(getActivity(), mSounds.get(position),
+                R.drawable.ic_pause, position, mSounds.size() - 1);
+        isPlaying = true;
+    }
+
+    @Override
+    public void onSoundPause() {
+        position = mRepository.getSoundIndex(mPlayingSoundId);
+        CreatNotification.createNotification(getActivity(), mSounds.get(position),
+                R.drawable.ic_play_arrow, position, mSounds.size() - 1);
+        isPlaying = false;
+    }
+
+    @Override
+    public void onSoundNext() {
+        position = mRepository.getSoundIndex(mPlayingSoundId) + 1;
+        CreatNotification.createNotification(getActivity(), mSounds.get(position),
+                R.drawable.ic_pause, position, mSounds.size() - 1);
+
     }
 
     private class SoundHolder extends RecyclerView.ViewHolder {
