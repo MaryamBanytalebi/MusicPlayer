@@ -203,6 +203,7 @@ public class MusicPlayerRepository {
                 AssetFileDescriptor afd = mContext.getAssets().openFd(assetPath);
                 metaRetriever.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
 
+                //read music's metadata from asset
                 String title = metaRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
                 String artist = metaRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
                 String album = metaRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM);
@@ -216,9 +217,9 @@ public class MusicPlayerRepository {
 
                 afd.close();
                 Sound sound = new Sound(assetPath);
-                /*sound.setTitle(title);
+                sound.setTitle(title);
                 sound.setArtist(artist);
-                sound.setAlbum(album);*/
+                sound.setAlbum(album);
                 sound.setBitmap(mBitmap);
                 loadInMediaPlayer(assetManager, sound);
                 mSounds.add(sound);

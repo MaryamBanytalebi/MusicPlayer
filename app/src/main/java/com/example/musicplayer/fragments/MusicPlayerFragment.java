@@ -129,7 +129,7 @@ public class MusicPlayerFragment extends Fragment {
                              Bundle savedInstanceState) {
         Log.d(TAG, "onCreateView");
         // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.fragment_media_player, container, false);
+        View view = inflater.inflate(R.layout.fragment_music_player, container, false);
 
         findViews(view);
         if (mRepository.getPlayingSound()!=null){
