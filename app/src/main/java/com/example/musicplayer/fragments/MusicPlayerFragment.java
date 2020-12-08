@@ -376,7 +376,7 @@ public class MusicPlayerFragment extends Fragment {
 
             mButton = itemView.findViewById(R.id.button_beat_box);
             mTextMusicName = itemView.findViewById(R.id.txt_music_name);
-            mButton.setOnClickListener(new View.OnClickListener() {
+            itemView.setOnClickListener(new View.OnClickListener() {
                 @RequiresApi(api = Build.VERSION_CODES.KITKAT)
                 @Override
                 public void onClick(View v) {

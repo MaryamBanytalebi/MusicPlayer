@@ -22,6 +22,7 @@ import com.example.musicplayer.R;
 import com.example.musicplayer.model.Sound;
 import com.example.musicplayer.repository.MusicPlayerRepository;
 
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
@@ -34,15 +35,19 @@ public class MusicPlayerDetailFragment extends Fragment {
     public static final String BUNDLE_STATE = "bundle_state";
     private UUID mSoundId;
     private Sound mSound;
+    private List<Sound> mSounds;
     private MusicPlayerRepository mRepository;
     private ImageView mImageView;
     private TextView mTextView;
     private String mState;
     private MutableLiveData<String> mLiveDataTime;
+    private MutableLiveData<Boolean> mLiveDataRepeatAll;
     private SeekBar mSeekBar;
     private TextView mTextViewTime,mTextViewTotalTime;
-    private ImageButton mImageButton_next,mImageButton_prev,mImageButton_playing;
+    private ImageButton mImageButton_next,mImageButton_prev,mImageButton_playing,
+            mImageButtonRepeatOne,mImageButtonRepeatAll;
     private boolean mIsMusicPlaying;
+    private boolean mIsRepeatAll;
 
     public MusicPlayerDetailFragment() {
         // Required empty public constructor
@@ -74,8 +79,10 @@ public class MusicPlayerDetailFragment extends Fragment {
         mState = getArguments().getString(ARGS_STATE);
         mRepository = MusicPlayerRepository.getInstance(getActivity());
         mSound = mRepository.getSound(mSoundId);
+        mSounds = mRepository.getSounds();
         mLiveDataTime = new MutableLiveData<>();
         mIsMusicPlaying = mRepository.isMusicPlaying();
+        mLiveDataRepeatAll = mRepository.getLiveDataIsPlaying();
 
     }
 
@@ -126,6 +133,22 @@ public class MusicPlayerDetailFragment extends Fragment {
                 initView();
             }
         });
+
+        mImageButtonRepeatOne.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+            @Override
+            public void onClick(View view) {
+                mRepository.repeatOne(mRepository.getSound(mSoundId));
+                initView();
+            }
+        });
+        mImageButtonRepeatAll.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mIsRepeatAll = mRepository.isRepeatAll();
+                mRepository.setRepeatAll(!mIsRepeatAll);
+            }
+        });
     }
 
     private void initView() {
@@ -165,6 +188,20 @@ public class MusicPlayerDetailFragment extends Fragment {
             @Override
             public void onChanged(String time) {
                 mTextViewTime.setText(time);
+                if (time.equals(mTextViewTotalTime.getText().toString()))
+                    mLiveDataRepeatAll.postValue(false);
+            }
+        });
+        mLiveDataRepeatAll.observe(this, new Observer<Boolean>() {
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+            @Override
+            public void onChanged(Boolean isPlaying) {
+                if (!isPlaying && mRepository.isRepeatAll()){
+                    mRepository.nextSound(mSound);
+                    mSound = mRepository.getPlayingSound();
+                    mSoundId = mSound.getSoundId();
+                    initView();
+                }
             }
         });
     }
